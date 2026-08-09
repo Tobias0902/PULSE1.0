@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Node / JavaScript / TypeScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+.next/
+coverage/
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Local application data
+data/
+uploads/
