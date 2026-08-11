@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-PULSE is a new, pre-implementation project. As of this writing, the repository contains no application code — only this file and a `.gitignore`. **No technology stack has been selected yet.** Do not assume Node/TypeScript, or any other stack, just because `.gitignore` has entries for it; that file is a generic starter and is not a technology decision.
+Architecture Decisions #1–#8 below are locked. The first implementation iteration (PULSE-Core foundation only — see "Commands" and README.md) is in place: the pnpm/Turborepo monorepo, the NestJS/Drizzle/PostgreSQL backend, the initial domain model (Organization/Location/User/Role/Permission plus the Customer -> AssistiveDevice -> Case -> Appointment hierarchy), REST + OpenAPI, an audit-event foundation, and a throwaway dev/admin UI (`apps/dev-console`, explicitly not the final Cockpit). This is still foundation-only: no Module SDK, connectors/integration layer, relay, OIDC/MFA, or real product UX yet — see "Open decisions" below for what remains genuinely undecided.
 
-Do not invent a finished architecture or begin implementing application features until the open decisions below have been resolved with the user. When a domain or architecture question is unclear, say so explicitly (or ask) rather than silently deciding it.
+Do not invent a finished architecture or begin implementing further application features beyond what's already here until any relevant open decision below has been resolved with the user. When a domain or architecture question is unclear, say so explicitly (or ask) rather than silently deciding it.
 
 ## What PULSE is
 
@@ -331,4 +331,22 @@ Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architectu
 
 ## Commands
 
-None yet — no build, lint, or test tooling exists. Add this section once the monorepo scaffold (pnpm + Turborepo) is in place.
+The pnpm + Turborepo monorepo scaffold from Decision #1 is in place (first
+implementation iteration: PULSE-Core foundation only — see README.md for
+full setup instructions and prerequisites).
+
+```sh
+pnpm install                                    # install all workspace dependencies
+docker compose up -d                            # local Postgres for development
+pnpm migrate                                    # apply DB migrations (apps/api/drizzle/*.sql)
+pnpm seed                                       # dev-only seed data (refuses NODE_ENV=production)
+pnpm dev                                        # run apps/api + apps/dev-console together
+pnpm build                                      # build all packages/apps
+pnpm lint                                       # eslint across the monorepo
+pnpm typecheck                                  # tsc --noEmit across the monorepo
+pnpm test                                       # unit tests across the monorepo
+pnpm --filter @pulse/api migrate:generate       # generate a new SQL migration after a schema change
+```
+
+apps/api serves the OpenAPI document (the canonical API contract per
+Decision #3) at `http://localhost:3000/api/docs`.

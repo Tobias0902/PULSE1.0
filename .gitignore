@@ -46,3 +46,6 @@ temp/
 # Local application data
 data/
 uploads/
+
+# Turborepo
+.turbo/

@@ -1,0 +1,20 @@
+# Local development Postgres only.
+# This is NOT the customer-deployment packaging — see CLAUDE.md Decision #2.
+# Each real PULSE installation runs its own dedicated Postgres inside the
+# customer's own infrastructure; this file only stands one up for this Mac.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pulse-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD: pulse_dev_password
+      POSTGRES_DB: pulse_core
+    ports:
+      - "5432:5432"
+    volumes:
+      - pulse-dev-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  pulse-dev-postgres-data:
