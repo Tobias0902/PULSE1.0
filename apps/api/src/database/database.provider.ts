@@ -10,6 +10,13 @@ export const DATABASE_CLIENT = Symbol("DATABASE_CLIENT");
 
 export type Database = PostgresJsDatabase<typeof schema>;
 
+// The type of the `tx` handle drizzle passes into a db.transaction(...)
+// callback — same query-building surface as Database, minus .transaction
+// itself. Services that need transactional writes (see AuditService,
+// EventBusService) accept either.
+export type Transaction = Parameters<Database["transaction"]>[0] extends (tx: infer T) => unknown ? T : never;
+export type DbClient = Database | Transaction;
+
 // The raw postgres.js client is provided separately from the drizzle
 // instance so DatabaseModule can close it on shutdown (see
 // database.module.ts) without every consumer needing to know it exists.

@@ -17,6 +17,7 @@ import { CasesModule } from "./cases/cases.module";
 import { AppointmentsModule } from "./appointments/appointments.module";
 import { ModuleRegistryModule } from "./module-registry/module-registry.module";
 import { SettingsModule } from "./settings/settings.module";
+import { EventsModule } from "./events/events.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SettingsModule } from "./settings/settings.module";
     }),
     DatabaseModule,
     AuditModule,
+    EventsModule,
     AuthModule,
     OrganizationsModule,
     LocationsModule,

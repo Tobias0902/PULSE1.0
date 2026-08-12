@@ -9,6 +9,7 @@ import { DATABASE_CONNECTION, Database } from "../src/database/database.provider
 import { single } from "../src/common/single";
 import {
   auditEvents,
+  domainEvents,
   modules,
   organizationModules,
   organizations,
@@ -102,6 +103,7 @@ describe("Module activation (e2e)", () => {
   });
 
   afterAll(async () => {
+    await db.delete(domainEvents).where(inArray(domainEvents.organizationId, createdOrgIds));
     await db.delete(organizationModules).where(inArray(organizationModules.organizationId, createdOrgIds));
     await db.delete(modules).where(inArray(modules.id, createdModuleIds));
     await db.delete(auditEvents).where(inArray(auditEvents.organizationId, createdOrgIds));

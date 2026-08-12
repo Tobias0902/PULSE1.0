@@ -43,6 +43,13 @@
       "when": 1786555939217,
       "tag": "0005_add_organization_location_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786556582720,
+      "tag": "0006_add_domain_events",
+      "breakpoints": true
     }
   ]
 }

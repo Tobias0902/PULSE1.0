@@ -250,3 +250,35 @@ export const locationSettings = core.table("location_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   updatedBy: uuid("updated_by"),
 });
+
+// Transactional-outbox event log (CLAUDE.md Decision #7 §7's internal event
+// bus). A row is only ever inserted inside the same db.transaction as the
+// mutation that caused it (see EventBusService.publish) — that is the
+// whole point: a crash between the entity write and the event write must
+// not silently lose the event. Business columns (event_type, entity_*,
+// payload, occurred_at, causation_id, correlation_id) are append-only and
+// never updated; only the dispatcher-owned bookkeeping columns
+// (processed_at, attempts, last_error) are ever written to after insert.
+export const domainEvents = core.table(
+  "domain_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id),
+    eventType: text("event_type").notNull(),
+    entityType: text("entity_type"),
+    // Opaque identifier, not necessarily a UUID — same reasoning as
+    // audit_events.entity_id (e.g. module ids are stable strings).
+    entityId: text("entity_id"),
+    payload: jsonb("payload").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    causationId: uuid("causation_id"),
+    correlationId: uuid("correlation_id"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+  },
+  (t) => [
+    index("domain_events_dispatch_idx").on(t.processedAt, t.occurredAt),
+    index("domain_events_organization_event_type_idx").on(t.organizationId, t.eventType),
+  ],
+);

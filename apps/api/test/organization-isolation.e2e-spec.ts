@@ -13,6 +13,7 @@ import {
   auditEvents,
   cases,
   customers,
+  domainEvents,
   organizations,
   permissions,
   refreshTokens,
@@ -125,6 +126,7 @@ describe("Organization isolation (e2e)", () => {
   });
 
   afterAll(async () => {
+    await db.delete(domainEvents).where(inArray(domainEvents.organizationId, createdOrgIds));
     await db.delete(appointments).where(inArray(appointments.organizationId, createdOrgIds));
     await db.delete(cases).where(inArray(cases.organizationId, createdOrgIds));
     await db.delete(assistiveDevices).where(inArray(assistiveDevices.organizationId, createdOrgIds));
