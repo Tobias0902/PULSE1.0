@@ -25,4 +25,14 @@ export interface ModuleDescriptor {
   permissionKeys: string[];
   /** The module's own Postgres schema name, or null for Core (which owns the "core" schema). */
   postgresSchema: string | null;
+  /**
+   * Path to this module's own Drizzle migrations folder, relative to
+   * apps/api (matching drizzle.config.ts's existing `out` convention), or
+   * null if the module owns no schema of its own. The migration runner
+   * (apps/api/src/database/migrate.ts) applies every registered module's
+   * folder in turn against the one shared database connection — modules
+   * are independently *migrated*, never independently *databased*
+   * (CLAUDE.md Decision #2: one database per installation).
+   */
+  migrationsFolder: string | null;
 }

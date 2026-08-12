@@ -66,9 +66,20 @@ pnpm migrate     # apply pending migrations
 pnpm seed        # (re-)apply dev-only seed data — refuses to run with NODE_ENV=production
 ```
 
-To change the schema: edit `apps/api/src/database/schema.ts`, then run
+To change the Core schema: edit `apps/api/src/database/schema.ts`, then run
 `pnpm --filter @pulse/api migrate:generate` to produce a new SQL migration
 file under `apps/api/drizzle/`, and commit the generated file.
+
+`pnpm migrate` applies every *registered module's* migrations in one pass
+against the installation's single database (CLAUDE.md Decision #2), not
+just Core's — each module declares its own migrations folder on its entry
+in `apps/api/src/module-registry/module-descriptors.ts`, and gets its own
+independent migration-tracking table so one module's history never
+collides with another's. A future module (Calendar, PulseHuman, ...) adds
+itself the same way Core already does: its own schema file, its own
+`drizzle.config.ts`/migrations folder/`migrate:<module>:generate` script,
+and a `migrationsFolder` entry on its descriptor — `pnpm migrate` then
+picks it up automatically, no changes to the runner itself required.
 
 ## What this iteration deliberately does not include
 

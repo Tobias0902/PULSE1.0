@@ -11,6 +11,7 @@ function descriptor(overrides: Partial<ModuleDescriptor>): ModuleDescriptor {
     dependsOn: [],
     permissionKeys: [],
     postgresSchema: "core",
+    migrationsFolder: "./drizzle",
     ...overrides,
   };
 }

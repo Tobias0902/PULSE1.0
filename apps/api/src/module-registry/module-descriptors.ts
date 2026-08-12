@@ -15,5 +15,6 @@ export const MODULE_DESCRIPTORS: ModuleDescriptor[] = [
     dependsOn: [],
     permissionKeys: [...PERMISSION_KEYS],
     postgresSchema: "core",
+    migrationsFolder: "./drizzle",
   },
 ];
