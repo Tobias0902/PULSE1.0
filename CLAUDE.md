@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Architecture Decisions #1–#8 below are locked. The first implementation iteration (PULSE-Core foundation only — see "Commands" and README.md) is in place: the pnpm/Turborepo monorepo, the NestJS/Drizzle/PostgreSQL backend, the initial domain model (Organization/Location/User/Role/Permission plus the Customer -> AssistiveDevice -> Case -> Appointment hierarchy), REST + OpenAPI, an audit-event foundation, and a throwaway dev/admin UI (`apps/dev-console`, explicitly not the final Cockpit). This is still foundation-only: no Module SDK, connectors/integration layer, relay, OIDC/MFA, or real product UX yet — see "Open decisions" below for what remains genuinely undecided.
+Architecture Decisions #1–#9 below are locked. The first implementation iteration (PULSE-Core foundation only — see "Commands" and README.md) is in place: the pnpm/Turborepo monorepo, the NestJS/Drizzle/PostgreSQL backend, the initial domain model (Organization/Location/User/Role/Permission plus the Customer -> AssistiveDevice -> Case -> Appointment hierarchy), REST + OpenAPI, an audit-event foundation, and a throwaway dev/admin UI (`apps/dev-console`, explicitly not the final Cockpit). This is still foundation-only: no Module SDK, connectors/integration layer, relay, OIDC/MFA, or real product UX yet — see "Open decisions" below for what remains genuinely undecided.
 
 Do not invent a finished architecture or begin implementing further application features beyond what's already here until any relevant open decision below has been resolved with the user. When a domain or architecture question is unclear, say so explicitly (or ask) rather than silently deciding it.
 
@@ -34,6 +34,8 @@ The product is structured as a stable **PULSE-Core** plus optional modules.
 - Integration/API infrastructure
 
 **Future modules** may include:
+- PULSE Calendar — user/employee-centered calendar module; the platform-wide appointment/event authority (Decision #9)
+- PULSEHuman — internal employee application (messaging, reviews, goals, vacation/absence, shift planning); explicitly not CRM/ERP and holds no customer data
 - PULSE-QM — quality management, processes, knowledge, continuous improvement
 - PULSE-AI — dictation, summarization, assistance, analysis
 - Communication integrations (email, messaging)
@@ -298,9 +300,25 @@ Binding principles:
 
 This decision extends Decision #7's Module SDK to a new, semantically restricted extension category (connectors), rather than introducing a parallel extension mechanism. It preserves compatibility with all locked decisions #1–#7: no shared central database or PULSE-operated data path (#2), synchronization writes governed by the same conflict/versioning model (#6), external semantics absorbed by the connector mapping layer so Core and modules stay industry-neutral (#7), and webhook-based triggers reusing the existing relay architecture (#5) rather than introducing new inbound exposure.
 
+### Decision #9 — Calendar as the platform-wide appointment/event authority (LOCKED, 2026-08-12)
+
+Resolves the open question carried since Decision #7 §2 ("exact Core-primitive vs. appointment-management-module feature boundary in practice").
+
+Binding principles:
+
+1. PULSE Calendar (a first-party module, per Decision #7) is the single authoritative domain for all appointments and calendar events created from this point forward, across every module and every client.
+2. PULSE-Core's existing `appointments` table, service, and controller (the foundation-iteration proof of the Customer → AssistiveDevice → Case → Appointment chain) are frozen as legacy: no further fields, endpoints, or business logic may be added to them, and no new module or client-side flow may take a new dependency on them.
+3. The legacy `appointments` table and its existing data are not deleted or migrated by this decision. Their controlled migration or removal is separate, explicitly-scoped future work — not an implicit side effect of Calendar shipping.
+4. CRM, ERP, Cockpit, PULSEHuman, and any future module needing appointment/calendar functionality must integrate with Calendar exclusively through Calendar's own defined contracts and domain events (per Decision #7 §7's in-process service calls / internal event bus) — never by maintaining an independent, duplicate record of the same real-world appointment in their own schema, and never by directly querying Calendar's tables (Decision #7 §9).
+5. A source module that wants an event of its own to appear in a user's calendar publishes it through Calendar's generic projection contract rather than Calendar special-casing that module by name — Calendar's own code does not change as new source modules (CRM, ERP, Cockpit, and beyond) are added later.
+6. Every calendar event Calendar creates on another module's behalf carries a soft (non-foreign-key) origin reference back to that module and its entity, consistent with Decision #7 §10's prohibition on cross-schema foreign keys between Core and modules.
+7. Authority for a given appointment is exactly one module at a time, generalizing Decision #8 §3's entity/group-level authority principle from external-system integration to inter-module integration within the same installation: whichever module owns the underlying business process (e.g. PULSEHuman for an approved absence) is authoritative for the resulting calendar data, and a direct edit attempted on the projected Calendar event is rejected rather than silently accepted or translated back.
+
+This decision extends Decision #7's module-boundary philosophy (Core stays narrow; richer functionality lives in a module) to the specific case Decision #7 §2 left open, and extends Decision #8's single-source-of-truth-per-entity philosophy from external connectors to inter-module relationships within one installation. It does not reopen or modify Decisions #1–#8.
+
 ## Open decisions (must be resolved before implementation starts)
 
-Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architecture), #4 (authentication and authorization), #5 (secure remote and mobile access), #6 (synchronization and offline strategy), #7 (module boundaries and extension architecture) and #8 (integration layer) are locked above. The following remain explicitly undecided — flag them rather than assuming an answer:
+Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architecture), #4 (authentication and authorization), #5 (secure remote and mobile access), #6 (synchronization and offline strategy), #7 (module boundaries and extension architecture), #8 (integration layer) and #9 (Calendar as the platform-wide appointment/event authority) are locked above. The following remain explicitly undecided — flag them rather than assuming an answer:
 
 - Concrete API versioning policy: supported-version and deprecation windows, and URI versioning vs. header versioning (see Decision #3)
 - Structural separation and governance of internal vs. external/public APIs (see Decision #3, principle 9)
@@ -317,7 +335,6 @@ Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architectu
 - Fleet update/version management approach across many independent installations, and the split of backup responsibility/tooling between PULSE and the customer, including Node.js runtime management (see Decision #1, Follow-up #2)
 - Desktop shell validation: Tauri vs. Electron, pending the WebView2 compatibility spike (see Decision #1, Follow-up #1)
 - Whether/how a single customer installation supports multiple internal organizations/departments of that one customer (distinct from — and not to be confused with — cross-customer multi-tenancy, which is now excluded)
-- Exact Core-primitive vs. appointment-management-module feature boundary in practice (see Decision #7, principle 2)
 - Module SDK version-compatibility mechanics for independently distributed/updated modules (see Decision #7, principle 14)
 - Whether/when to move from compile-time-registered modules to dynamically loadable plugins (see Decision #7)
 - Concrete isolation technology for third-party modules and untrusted connectors (separate process, container, etc.) (see Decision #7, principle 13; Decision #8, principle 16)
