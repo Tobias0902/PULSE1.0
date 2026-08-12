@@ -7,6 +7,7 @@ import {
   boolean,
   jsonb,
   primaryKey,
+  index,
 } from "drizzle-orm/pg-core";
 
 // PULSE-Core owns this schema exclusively this iteration. Per CLAUDE.md
@@ -115,36 +116,62 @@ export const customers = core.table("customers", {
 
 // Persistent lifecycle anchor for one concrete device belonging to one
 // customer. Does NOT move through a workflow itself (see CLAUDE.md).
-export const assistiveDevices = core.table("assistive_devices", {
-  ...auditedColumns,
-  customerId: uuid("customer_id")
-    .notNull()
-    .references(() => customers.id),
-  label: text("label").notNull(),
-  // Free text, not an enum: PULSE-Core stays industry-neutral.
-  deviceType: text("device_type"),
-});
+//
+// organizationId is denormalized here (rather than resolved by walking
+// customerId -> customers.organizationId on every query) so every read can
+// be scoped directly at the query level. It is set once at creation from
+// the owning customer's organization and never changes independently.
+export const assistiveDevices = core.table(
+  "assistive_devices",
+  {
+    ...auditedColumns,
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => customers.id),
+    label: text("label").notNull(),
+    // Free text, not an enum: PULSE-Core stays industry-neutral.
+    deviceType: text("device_type"),
+  },
+  (t) => [index("assistive_devices_organization_id_idx").on(t.organizationId)],
+);
 
-export const cases = core.table("cases", {
-  ...auditedColumns,
-  assistiveDeviceId: uuid("assistive_device_id")
-    .notNull()
-    .references(() => assistiveDevices.id),
-  title: text("title").notNull(),
-  // Free text, not an enum: "maintenance"/"repair"/"new supply" are LimbArt
-  // examples only and must never be hardcoded system-defined case types.
-  type: text("type"),
-  status: text("status").notNull().default("open"),
-});
+export const cases = core.table(
+  "cases",
+  {
+    ...auditedColumns,
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    assistiveDeviceId: uuid("assistive_device_id")
+      .notNull()
+      .references(() => assistiveDevices.id),
+    title: text("title").notNull(),
+    // Free text, not an enum: "maintenance"/"repair"/"new supply" are LimbArt
+    // examples only and must never be hardcoded system-defined case types.
+    type: text("type"),
+    status: text("status").notNull().default("open"),
+  },
+  (t) => [index("cases_organization_id_idx").on(t.organizationId)],
+);
 
-export const appointments = core.table("appointments", {
-  ...auditedColumns,
-  caseId: uuid("case_id")
-    .notNull()
-    .references(() => cases.id),
-  scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
-  notes: text("notes"),
-});
+export const appointments = core.table(
+  "appointments",
+  {
+    ...auditedColumns,
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => cases.id),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    notes: text("notes"),
+  },
+  (t) => [index("appointments_organization_id_idx").on(t.organizationId)],
+);
 
 // Append-only. No update/delete endpoints are exposed for this table.
 export const auditEvents = core.table("audit_events", {

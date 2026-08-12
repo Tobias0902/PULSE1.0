@@ -12,6 +12,7 @@ export const createAppointmentSchema = z.object({
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 
 export const appointmentSchema = auditedFieldsSchema.extend({
+  organizationId: uuidSchema,
   caseId: uuidSchema,
   scheduledAt: z.string().datetime(),
   notes: z.string().nullable(),

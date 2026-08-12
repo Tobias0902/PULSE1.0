@@ -12,6 +12,7 @@ export const createAssistiveDeviceSchema = z.object({
 export type CreateAssistiveDeviceInput = z.infer<typeof createAssistiveDeviceSchema>;
 
 export const assistiveDeviceSchema = auditedFieldsSchema.extend({
+  organizationId: uuidSchema,
   customerId: uuidSchema,
   label: z.string(),
   deviceType: z.string().nullable(),

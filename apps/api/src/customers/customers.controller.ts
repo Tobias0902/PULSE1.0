@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../common/guards/permissions.guard";
@@ -18,24 +18,26 @@ export class CustomersController {
   @Post()
   @RequirePermissions("customer:write")
   create(@Body() body: CreateCustomerDto, @CurrentUser() user: JwtPayload) {
-    return this.customersService.create(body, user.sub);
+    // organizationId is never taken from the client body: a caller could
+    // otherwise attach a customer to any organization by guessing its id.
+    return this.customersService.create({ ...body, organizationId: user.organizationId }, user.sub);
   }
 
   @Get()
   @RequirePermissions("customer:read")
-  findAll(@Query("organizationId") organizationId: string) {
-    return this.customersService.findByOrganization(organizationId);
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.customersService.findByOrganization(user.organizationId);
   }
 
   @Get(":id")
   @RequirePermissions("customer:read")
-  findOne(@Param("id") id: string) {
-    return this.customersService.findOne(id);
+  findOne(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
+    return this.customersService.findOne(id, user.organizationId);
   }
 
   @Patch(":id")
   @RequirePermissions("customer:write")
   update(@Param("id") id: string, @Body() body: UpdateCustomerDto, @CurrentUser() user: JwtPayload) {
-    return this.customersService.update(id, body, user.sub);
+    return this.customersService.update(id, body, user.sub, user.organizationId);
   }
 }

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import { CreateOrganizationInput } from "@pulse/domain";
 import { DATABASE_CONNECTION, Database } from "../database/database.provider";
@@ -31,11 +31,17 @@ export class OrganizationsService {
     return organization;
   }
 
-  findAll() {
-    return this.db.query.organizations.findMany();
+  // A user's JWT only ever carries one organizationId (see CLAUDE.md's open
+  // "multiple internal organizations per installation" question) — until
+  // that's resolved, "all organizations" for a request means "my own".
+  findAll(organizationId: string) {
+    return this.db.query.organizations.findMany({ where: eq(organizations.id, organizationId) });
   }
 
-  findOne(id: string) {
-    return this.db.query.organizations.findFirst({ where: eq(organizations.id, id) });
+  async findOne(id: string, organizationId: string) {
+    if (id !== organizationId) throw new NotFoundException("Organization not found.");
+    const organization = await this.db.query.organizations.findFirst({ where: eq(organizations.id, id) });
+    if (!organization) throw new NotFoundException("Organization not found.");
+    return organization;
   }
 }

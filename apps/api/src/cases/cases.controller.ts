@@ -18,24 +18,24 @@ export class CasesController {
   @Post()
   @RequirePermissions("case:write")
   create(@Body() body: CreateCaseDto, @CurrentUser() user: JwtPayload) {
-    return this.casesService.create(body, user.sub);
+    return this.casesService.create(body, user.sub, user.organizationId);
   }
 
   @Get()
   @RequirePermissions("case:read")
-  findAll(@Query("assistiveDeviceId") assistiveDeviceId: string) {
-    return this.casesService.findByAssistiveDevice(assistiveDeviceId);
+  findAll(@Query("assistiveDeviceId") assistiveDeviceId: string, @CurrentUser() user: JwtPayload) {
+    return this.casesService.findByAssistiveDevice(assistiveDeviceId, user.organizationId);
   }
 
   @Get(":id")
   @RequirePermissions("case:read")
-  findOne(@Param("id") id: string) {
-    return this.casesService.findOne(id);
+  findOne(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
+    return this.casesService.findOne(id, user.organizationId);
   }
 
   @Patch(":id")
   @RequirePermissions("case:write")
   update(@Param("id") id: string, @Body() body: UpdateCaseDto, @CurrentUser() user: JwtPayload) {
-    return this.casesService.update(id, body, user.sub);
+    return this.casesService.update(id, body, user.sub, user.organizationId);
   }
 }

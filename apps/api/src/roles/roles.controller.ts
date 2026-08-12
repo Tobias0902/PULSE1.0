@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../common/guards/permissions.guard";
@@ -18,12 +18,14 @@ export class RolesController {
   @Post()
   @RequirePermissions("role:write")
   create(@Body() body: CreateRoleDto, @CurrentUser() user: JwtPayload) {
-    return this.rolesService.create(body, user.sub);
+    // organizationId is never taken from the client body — see the same
+    // note on CustomersController.create.
+    return this.rolesService.create({ ...body, organizationId: user.organizationId }, user.sub);
   }
 
   @Get()
   @RequirePermissions("role:read")
-  findAll(@Query("organizationId") organizationId: string) {
-    return this.rolesService.findByOrganization(organizationId);
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.rolesService.findByOrganization(user.organizationId);
   }
 }

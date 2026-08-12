@@ -36,18 +36,20 @@ export class CustomersService {
     return this.db.query.customers.findMany({ where: eq(customers.organizationId, organizationId) });
   }
 
-  async findOne(id: string) {
-    const customer = await this.db.query.customers.findFirst({ where: eq(customers.id, id) });
+  async findOne(id: string, organizationId: string) {
+    const customer = await this.db.query.customers.findFirst({
+      where: and(eq(customers.id, id), eq(customers.organizationId, organizationId)),
+    });
     if (!customer) throw new NotFoundException("Customer not found.");
     return customer;
   }
 
-  async update(id: string, input: UpdateCustomerInput, actorUserId: string) {
+  async update(id: string, input: UpdateCustomerInput, actorUserId: string, organizationId: string) {
     const { version, ...changes } = input;
     const [updated] = await this.db
       .update(customers)
       .set({ ...changes, updatedBy: actorUserId, updatedAt: new Date(), version: sql`${customers.version} + 1` })
-      .where(and(eq(customers.id, id), eq(customers.version, version)))
+      .where(and(eq(customers.id, id), eq(customers.version, version), eq(customers.organizationId, organizationId)))
       .returning();
     const customer = assertVersionedUpdateApplied(updated, "Customer");
     await this.auditService.recordMutation({

@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { CreateAppointmentInput } from "@pulse/domain";
 import { DATABASE_CONNECTION, Database } from "../database/database.provider";
 import { appointments, assistiveDevices, cases, customers } from "../database/schema";
@@ -13,8 +13,10 @@ export class AppointmentsService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(input: CreateAppointmentInput, actorUserId: string) {
-    const caseRecord = await this.db.query.cases.findFirst({ where: eq(cases.id, input.caseId) });
+  async create(input: CreateAppointmentInput, actorUserId: string, organizationId: string) {
+    const caseRecord = await this.db.query.cases.findFirst({
+      where: and(eq(cases.id, input.caseId), eq(cases.organizationId, organizationId)),
+    });
     if (!caseRecord) throw new NotFoundException("Case not found.");
 
     const appointment = single(
@@ -22,6 +24,7 @@ export class AppointmentsService {
         .insert(appointments)
         .values({
           ...input,
+          organizationId,
           scheduledAt: new Date(input.scheduledAt),
           createdBy: actorUserId,
           updatedBy: actorUserId,
@@ -29,7 +32,6 @@ export class AppointmentsService {
         .returning(),
     );
 
-    const organizationId = await this.resolveOrganizationId(caseRecord.assistiveDeviceId);
     await this.auditService.recordMutation({
       organizationId,
       userId: actorUserId,
@@ -41,13 +43,15 @@ export class AppointmentsService {
     return appointment;
   }
 
-  findByCase(caseId: string) {
-    return this.db.query.appointments.findMany({ where: eq(appointments.caseId, caseId) });
+  findByCase(caseId: string, organizationId: string) {
+    return this.db.query.appointments.findMany({
+      where: and(eq(appointments.caseId, caseId), eq(appointments.organizationId, organizationId)),
+    });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, organizationId: string) {
     const appointment = await this.db.query.appointments.findFirst({
-      where: eq(appointments.id, id),
+      where: and(eq(appointments.id, id), eq(appointments.organizationId, organizationId)),
     });
     if (!appointment) throw new NotFoundException("Appointment not found.");
     return appointment;
@@ -55,9 +59,12 @@ export class AppointmentsService {
 
   // Full Customer -> AssistiveDevice -> Case -> Appointment traceability
   // chain, resolved with explicit sequential lookups rather than a Drizzle
-  // relational `with` query, keeping each hop plain and auditable.
-  async trace(id: string) {
-    const appointment = await this.findOne(id);
+  // relational `with` query, keeping each hop plain and auditable. Every hop
+  // is already known to belong to `organizationId` because the appointment
+  // lookup itself is org-scoped and every entity below it was created with
+  // the same organizationId (see cases/assistive-devices services).
+  async trace(id: string, organizationId: string) {
+    const appointment = await this.findOne(id, organizationId);
     const caseRecord = await this.db.query.cases.findFirst({ where: eq(cases.id, appointment.caseId) });
     if (!caseRecord) throw new NotFoundException("Case not found.");
     const assistiveDevice = await this.db.query.assistiveDevices.findFirst({
@@ -70,14 +77,5 @@ export class AppointmentsService {
     if (!customer) throw new NotFoundException("Customer not found.");
 
     return { appointment, case: caseRecord, assistiveDevice, customer };
-  }
-
-  private async resolveOrganizationId(assistiveDeviceId: string): Promise<string | null> {
-    const device = await this.db.query.assistiveDevices.findFirst({
-      where: eq(assistiveDevices.id, assistiveDeviceId),
-    });
-    if (!device) return null;
-    const customer = await this.db.query.customers.findFirst({ where: eq(customers.id, device.customerId) });
-    return customer?.organizationId ?? null;
   }
 }

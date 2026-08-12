@@ -18,18 +18,18 @@ export class AssistiveDevicesController {
   @Post()
   @RequirePermissions("assistiveDevice:write")
   create(@Body() body: CreateAssistiveDeviceDto, @CurrentUser() user: JwtPayload) {
-    return this.assistiveDevicesService.create(body, user.sub);
+    return this.assistiveDevicesService.create(body, user.sub, user.organizationId);
   }
 
   @Get()
   @RequirePermissions("assistiveDevice:read")
-  findAll(@Query("customerId") customerId: string) {
-    return this.assistiveDevicesService.findByCustomer(customerId);
+  findAll(@Query("customerId") customerId: string, @CurrentUser() user: JwtPayload) {
+    return this.assistiveDevicesService.findByCustomer(customerId, user.organizationId);
   }
 
   @Get(":id")
   @RequirePermissions("assistiveDevice:read")
-  findOne(@Param("id") id: string) {
-    return this.assistiveDevicesService.findOne(id);
+  findOne(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
+    return this.assistiveDevicesService.findOne(id, user.organizationId);
   }
 }

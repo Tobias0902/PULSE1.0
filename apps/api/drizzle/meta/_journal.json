@@ -8,6 +8,20 @@
       "when": 1786481186133,
       "tag": "0000_futuristic_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786544751419,
+      "tag": "0001_add_organization_id_to_device_case_appointment",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786544782450,
+      "tag": "0002_enforce_organization_id_not_null",
+      "breakpoints": true
     }
   ]
 }

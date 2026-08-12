@@ -6,15 +6,24 @@ import * as schema from "./schema";
 import { AppConfig } from "../config/configuration";
 
 export const DATABASE_CONNECTION = Symbol("DATABASE_CONNECTION");
+export const DATABASE_CLIENT = Symbol("DATABASE_CLIENT");
 
 export type Database = PostgresJsDatabase<typeof schema>;
 
+// The raw postgres.js client is provided separately from the drizzle
+// instance so DatabaseModule can close it on shutdown (see
+// database.module.ts) without every consumer needing to know it exists.
+export const databaseClientProvider: Provider = {
+  provide: DATABASE_CLIENT,
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => {
+    const { databaseUrl } = configService.getOrThrow<AppConfig>("app");
+    return postgres(databaseUrl);
+  },
+};
+
 export const databaseProvider: Provider = {
   provide: DATABASE_CONNECTION,
-  inject: [ConfigService],
-  useFactory: (configService: ConfigService): Database => {
-    const { databaseUrl } = configService.getOrThrow<AppConfig>("app");
-    const client = postgres(databaseUrl);
-    return drizzle(client, { schema });
-  },
+  inject: [DATABASE_CLIENT],
+  useFactory: (client: postgres.Sql): Database => drizzle(client, { schema }),
 };

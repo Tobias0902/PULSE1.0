@@ -23,13 +23,13 @@ export class OrganizationsController {
 
   @Get()
   @RequirePermissions("organization:read")
-  findAll() {
-    return this.organizationsService.findAll();
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.organizationsService.findAll(user.organizationId);
   }
 
   @Get(":id")
   @RequirePermissions("organization:read")
-  findOne(@Param("id") id: string) {
-    return this.organizationsService.findOne(id);
+  findOne(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
+    return this.organizationsService.findOne(id, user.organizationId);
   }
 }

@@ -22,6 +22,7 @@ export const updateCaseSchema = z.object({
 export type UpdateCaseInput = z.infer<typeof updateCaseSchema>;
 
 export const caseSchema = auditedFieldsSchema.extend({
+  organizationId: uuidSchema,
   assistiveDeviceId: uuidSchema,
   title: z.string(),
   type: z.string().nullable(),

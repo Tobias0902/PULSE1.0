@@ -18,24 +18,24 @@ export class AppointmentsController {
   @Post()
   @RequirePermissions("appointment:write")
   create(@Body() body: CreateAppointmentDto, @CurrentUser() user: JwtPayload) {
-    return this.appointmentsService.create(body, user.sub);
+    return this.appointmentsService.create(body, user.sub, user.organizationId);
   }
 
   @Get()
   @RequirePermissions("appointment:read")
-  findAll(@Query("caseId") caseId: string) {
-    return this.appointmentsService.findByCase(caseId);
+  findAll(@Query("caseId") caseId: string, @CurrentUser() user: JwtPayload) {
+    return this.appointmentsService.findByCase(caseId, user.organizationId);
   }
 
   @Get(":id")
   @RequirePermissions("appointment:read")
-  findOne(@Param("id") id: string) {
-    return this.appointmentsService.findOne(id);
+  findOne(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
+    return this.appointmentsService.findOne(id, user.organizationId);
   }
 
   @Get(":id/trace")
   @RequirePermissions("appointment:read")
-  trace(@Param("id") id: string) {
-    return this.appointmentsService.trace(id);
+  trace(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
+    return this.appointmentsService.trace(id, user.organizationId);
   }
 }

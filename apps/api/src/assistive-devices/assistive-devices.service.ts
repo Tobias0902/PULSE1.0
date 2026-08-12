@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { CreateAssistiveDeviceInput } from "@pulse/domain";
 import { DATABASE_CONNECTION, Database } from "../database/database.provider";
 import { assistiveDevices, customers } from "../database/schema";
@@ -13,20 +13,20 @@ export class AssistiveDevicesService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(input: CreateAssistiveDeviceInput, actorUserId: string) {
+  async create(input: CreateAssistiveDeviceInput, actorUserId: string, organizationId: string) {
     const customer = await this.db.query.customers.findFirst({
-      where: eq(customers.id, input.customerId),
+      where: and(eq(customers.id, input.customerId), eq(customers.organizationId, organizationId)),
     });
     if (!customer) throw new NotFoundException("Customer not found.");
 
     const device = single(
       await this.db
         .insert(assistiveDevices)
-        .values({ ...input, createdBy: actorUserId, updatedBy: actorUserId })
+        .values({ ...input, organizationId, createdBy: actorUserId, updatedBy: actorUserId })
         .returning(),
     );
     await this.auditService.recordMutation({
-      organizationId: customer.organizationId,
+      organizationId,
       userId: actorUserId,
       entityType: "AssistiveDevice",
       entityId: device.id,
@@ -36,15 +36,15 @@ export class AssistiveDevicesService {
     return device;
   }
 
-  findByCustomer(customerId: string) {
+  findByCustomer(customerId: string, organizationId: string) {
     return this.db.query.assistiveDevices.findMany({
-      where: eq(assistiveDevices.customerId, customerId),
+      where: and(eq(assistiveDevices.customerId, customerId), eq(assistiveDevices.organizationId, organizationId)),
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, organizationId: string) {
     const device = await this.db.query.assistiveDevices.findFirst({
-      where: eq(assistiveDevices.id, id),
+      where: and(eq(assistiveDevices.id, id), eq(assistiveDevices.organizationId, organizationId)),
     });
     if (!device) throw new NotFoundException("AssistiveDevice not found.");
     return device;
