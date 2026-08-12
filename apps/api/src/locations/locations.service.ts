@@ -13,11 +13,11 @@ export class LocationsService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(input: CreateLocationInput, actorUserId: string) {
+  async create(input: CreateLocationInput, actorUserId: string, organizationId: string) {
     const location = single(
       await this.db
         .insert(locations)
-        .values({ ...input, createdBy: actorUserId, updatedBy: actorUserId })
+        .values({ ...input, organizationId, createdBy: actorUserId, updatedBy: actorUserId })
         .returning(),
     );
     await this.auditService.recordMutation({

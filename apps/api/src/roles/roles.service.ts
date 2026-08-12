@@ -13,12 +13,12 @@ export class RolesService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(input: CreateRoleInput, actorUserId: string) {
+  async create(input: CreateRoleInput, actorUserId: string, organizationId: string) {
     const role = single(
       await this.db
         .insert(roles)
         .values({
-          organizationId: input.organizationId,
+          organizationId,
           name: input.name,
           createdBy: actorUserId,
           updatedBy: actorUserId,

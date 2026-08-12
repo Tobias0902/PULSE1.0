@@ -18,9 +18,7 @@ export class CustomersController {
   @Post()
   @RequirePermissions("customer:write")
   create(@Body() body: CreateCustomerDto, @CurrentUser() user: JwtPayload) {
-    // organizationId is never taken from the client body: a caller could
-    // otherwise attach a customer to any organization by guessing its id.
-    return this.customersService.create({ ...body, organizationId: user.organizationId }, user.sub);
+    return this.customersService.create(body, user.sub, user.organizationId);
   }
 
   @Get()

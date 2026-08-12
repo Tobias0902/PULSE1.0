@@ -225,3 +225,28 @@ export const organizationModules = core.table(
   },
   (t) => [primaryKey({ columns: [t.organizationId, t.moduleId] })],
 );
+
+// One settings blob per organization/location (CLAUDE.md Decision #7 §1).
+// A jsonb blob rather than dedicated columns per setting: settings will
+// grow across future modules, and a typed column per flag would mean a
+// migration per flag forever. No row until the first write — a fresh
+// organization/location has default (empty) settings without needing one.
+export const organizationSettings = core.table("organization_settings", {
+  organizationId: uuid("organization_id")
+    .primaryKey()
+    .references(() => organizations.id),
+  settings: jsonb("settings").notNull().default({}),
+  version: integer("version").notNull().default(1),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid("updated_by"),
+});
+
+export const locationSettings = core.table("location_settings", {
+  locationId: uuid("location_id")
+    .primaryKey()
+    .references(() => locations.id),
+  settings: jsonb("settings").notNull().default({}),
+  version: integer("version").notNull().default(1),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid("updated_by"),
+});

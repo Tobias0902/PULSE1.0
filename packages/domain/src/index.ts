@@ -11,3 +11,6 @@ export * from "./case.js";
 export * from "./appointment.js";
 export * from "./auth.js";
 export * from "./module.js";
+export * from "./settings.js";
+export * from "./organization-settings.js";
+export * from "./location-settings.js";

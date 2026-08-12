@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { auditedFieldsSchema, uuidSchema } from "./common.js";
 
+// organizationId is deliberately absent: it is always derived server-side
+// from the caller's own session, never accepted from the client (see
+// UsersController.create).
 export const createUserSchema = z.object({
-  organizationId: uuidSchema,
   email: z.string().email(),
   displayName: z.string().min(1).max(200),
   password: z.string().min(12).max(200),

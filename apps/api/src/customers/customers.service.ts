@@ -14,11 +14,11 @@ export class CustomersService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(input: CreateCustomerInput, actorUserId: string) {
+  async create(input: CreateCustomerInput, actorUserId: string, organizationId: string) {
     const customer = single(
       await this.db
         .insert(customers)
-        .values({ ...input, createdBy: actorUserId, updatedBy: actorUserId })
+        .values({ ...input, organizationId, createdBy: actorUserId, updatedBy: actorUserId })
         .returning(),
     );
     await this.auditService.recordMutation({

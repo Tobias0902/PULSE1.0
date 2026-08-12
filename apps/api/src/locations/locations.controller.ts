@@ -18,9 +18,7 @@ export class LocationsController {
   @Post()
   @RequirePermissions("location:write")
   create(@Body() body: CreateLocationDto, @CurrentUser() user: JwtPayload) {
-    // organizationId is never taken from the client body — see the same
-    // note on CustomersController.create.
-    return this.locationsService.create({ ...body, organizationId: user.organizationId }, user.sub);
+    return this.locationsService.create(body, user.sub, user.organizationId);
   }
 
   @Get()

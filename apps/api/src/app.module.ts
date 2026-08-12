@@ -16,6 +16,7 @@ import { AssistiveDevicesModule } from "./assistive-devices/assistive-devices.mo
 import { CasesModule } from "./cases/cases.module";
 import { AppointmentsModule } from "./appointments/appointments.module";
 import { ModuleRegistryModule } from "./module-registry/module-registry.module";
+import { SettingsModule } from "./settings/settings.module";
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ModuleRegistryModule } from "./module-registry/module-registry.module";
     CasesModule,
     AppointmentsModule,
     ModuleRegistryModule,
+    SettingsModule,
   ],
   providers: [{ provide: APP_PIPE, useClass: ZodValidationPipe }],
 })

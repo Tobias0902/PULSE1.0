@@ -36,6 +36,13 @@
       "when": 1786555701566,
       "tag": "0004_widen_audit_event_entity_id",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786555939217,
+      "tag": "0005_add_organization_location_settings",
+      "breakpoints": true
     }
   ]
 }

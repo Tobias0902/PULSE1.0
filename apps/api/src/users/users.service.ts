@@ -14,13 +14,13 @@ export class UsersService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(input: CreateUserInput, actorUserId: string) {
+  async create(input: CreateUserInput, actorUserId: string, organizationId: string) {
     const passwordHash = await argon2.hash(input.password, { type: argon2.argon2id });
     const user = single(
       await this.db
         .insert(users)
         .values({
-          organizationId: input.organizationId,
+          organizationId,
           email: input.email,
           displayName: input.displayName,
           passwordHash,

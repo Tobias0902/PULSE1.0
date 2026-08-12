@@ -18,9 +18,7 @@ export class RolesController {
   @Post()
   @RequirePermissions("role:write")
   create(@Body() body: CreateRoleDto, @CurrentUser() user: JwtPayload) {
-    // organizationId is never taken from the client body — see the same
-    // note on CustomersController.create.
-    return this.rolesService.create({ ...body, organizationId: user.organizationId }, user.sub);
+    return this.rolesService.create(body, user.sub, user.organizationId);
   }
 
   @Get()
