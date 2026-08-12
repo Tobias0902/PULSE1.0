@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import { ModuleDescriptor } from "@pulse/module-contracts";
 import { DATABASE_CONNECTION, Database } from "../database/database.provider";
-import { modules } from "../database/schema";
+import { modules, permissions } from "../database/schema";
 import { MODULE_DESCRIPTORS } from "./module-descriptors";
 import { SUPPORTED_SDK_VERSIONS } from "./sdk-version";
 
@@ -42,6 +42,20 @@ export class ModuleRegistryService implements OnModuleInit {
             updatedAt: new Date(),
           },
         });
+
+      // This is the canonical place a module's permission keys enter the
+      // shared catalog (Decision #4 §3-4) — not just the dev-only seed
+      // script, which never runs in production (see seed.ts). Without
+      // this, a module shipped to a real installation would have no way
+      // for any role to ever be granted its permissions.
+      if (descriptor.permissionKeys.length > 0) {
+        await this.db
+          .insert(permissions)
+          .values(
+            descriptor.permissionKeys.map((key) => ({ key, description: `${descriptor.name}: ${key}` })),
+          )
+          .onConflictDoNothing();
+      }
     }
   }
 

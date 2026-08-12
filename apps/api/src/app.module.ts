@@ -18,6 +18,7 @@ import { AppointmentsModule } from "./appointments/appointments.module";
 import { ModuleRegistryModule } from "./module-registry/module-registry.module";
 import { SettingsModule } from "./settings/settings.module";
 import { EventsModule } from "./events/events.module";
+import { CalendarModule } from "./modules/calendar/calendar.module";
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { EventsModule } from "./events/events.module";
     AppointmentsModule,
     ModuleRegistryModule,
     SettingsModule,
+    CalendarModule,
   ],
   providers: [{ provide: APP_PIPE, useClass: ZodValidationPipe }],
 })

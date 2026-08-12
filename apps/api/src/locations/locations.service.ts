@@ -1,5 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { and, eq } from "drizzle-orm";
 import { CreateLocationInput } from "@pulse/domain";
 import { DATABASE_CONNECTION, Database } from "../database/database.provider";
 import { locations } from "../database/schema";
@@ -35,5 +35,13 @@ export class LocationsService {
     return this.db.query.locations.findMany({
       where: eq(locations.organizationId, organizationId),
     });
+  }
+
+  async findOne(id: string, organizationId: string) {
+    const location = await this.db.query.locations.findFirst({
+      where: and(eq(locations.id, id), eq(locations.organizationId, organizationId)),
+    });
+    if (!location) throw new NotFoundException("Location not found.");
+    return location;
   }
 }

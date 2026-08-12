@@ -2,13 +2,13 @@ import { Provider } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { drizzle, PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "./schema";
+import { combinedSchema } from "./module-schemas";
 import { AppConfig } from "../config/configuration";
 
 export const DATABASE_CONNECTION = Symbol("DATABASE_CONNECTION");
 export const DATABASE_CLIENT = Symbol("DATABASE_CLIENT");
 
-export type Database = PostgresJsDatabase<typeof schema>;
+export type Database = PostgresJsDatabase<typeof combinedSchema>;
 
 // The type of the `tx` handle drizzle passes into a db.transaction(...)
 // callback — same query-building surface as Database, minus .transaction
@@ -32,5 +32,5 @@ export const databaseClientProvider: Provider = {
 export const databaseProvider: Provider = {
   provide: DATABASE_CONNECTION,
   inject: [DATABASE_CLIENT],
-  useFactory: (client: postgres.Sql): Database => drizzle(client, { schema }),
+  useFactory: (client: postgres.Sql): Database => drizzle(client, { schema: combinedSchema }),
 };

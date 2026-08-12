@@ -14,3 +14,4 @@ export * from "./module.js";
 export * from "./settings.js";
 export * from "./organization-settings.js";
 export * from "./location-settings.js";
+export * from "./calendar-event.js";

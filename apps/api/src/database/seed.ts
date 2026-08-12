@@ -3,8 +3,8 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as argon2 from "argon2";
-import { PERMISSION_KEYS } from "@pulse/domain";
 import * as schema from "./schema";
+import { MODULE_DESCRIPTORS } from "../module-registry/module-descriptors";
 
 // Package scripts always run with apps/api as cwd (pnpm --filter / turbo),
 // so the single root .env is always two levels up from here.
@@ -44,21 +44,18 @@ async function main() {
     }));
   if (!org) throw new Error("Failed to seed dev organization.");
 
-  const insertedPermissions = await db
-    .insert(schema.permissions)
-    .values(
-      PERMISSION_KEYS.map((key) => ({
-        key,
-        description: `Placeholder dev permission: ${key}`,
-      })),
-    )
-    .onConflictDoNothing()
-    .returning();
-
-  const allPermissions =
-    insertedPermissions.length > 0
-      ? insertedPermissions
-      : await db.query.permissions.findMany();
+  // Sourced from every registered module's descriptor, not just Core's own
+  // keys, so a fresh dev DB gets a fully-usable Administrator role
+  // regardless of which modules are compiled in. Always re-queried after
+  // the upsert rather than relying on .returning() (which only reflects
+  // newly-inserted rows) — re-running this script after new permission
+  // keys were added must still grant the *complete* current set, not only
+  // the ones added since the last run.
+  const permissionValues = MODULE_DESCRIPTORS.flatMap((descriptor) =>
+    descriptor.permissionKeys.map((key) => ({ key, description: `${descriptor.name}: ${key}` })),
+  );
+  await db.insert(schema.permissions).values(permissionValues).onConflictDoNothing();
+  const allPermissions = await db.query.permissions.findMany();
 
   const [role] = await db
     .insert(schema.roles)
