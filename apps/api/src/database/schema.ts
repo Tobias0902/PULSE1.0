@@ -179,8 +179,49 @@ export const auditEvents = core.table("audit_events", {
   organizationId: uuid("organization_id").references(() => organizations.id),
   userId: uuid("user_id").references(() => users.id),
   entityType: text("entity_type").notNull(),
-  entityId: uuid("entity_id").notNull(),
+  // Opaque identifier, not necessarily a UUID: most entities are
+  // UUID-keyed, but module ids (e.g. "test-base") are stable strings.
+  entityId: text("entity_id").notNull(),
   action: text("action").notNull(),
   payload: jsonb("payload"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Installation-wide catalog of module code this binary has compiled in,
+// synced from the static descriptor list at boot (CLAUDE.md Decision #7).
+// Never written to directly by request handlers.
+export const modules = core.table("modules", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  version: text("version").notNull(),
+  sdkVersion: text("sdk_version").notNull(),
+  isCore: boolean("is_core").notNull().default(false),
+  dependsOn: text("depends_on").array().notNull().default([]),
+  postgresSchema: text("postgres_schema"),
+  discoveredAt: timestamp("discovered_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Per-organization module activation state. Deactivating a module blocks
+// its guarded routes but never deletes or alters its data (Decision #7 §11).
+export const organizationModules = core.table(
+  "organization_modules",
+  {
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    moduleId: text("module_id")
+      .notNull()
+      .references(() => modules.id),
+    isActive: boolean("is_active").notNull().default(false),
+    config: jsonb("config").notNull().default({}),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    activatedBy: uuid("activated_by"),
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+    deactivatedBy: uuid("deactivated_by"),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.moduleId] })],
+);

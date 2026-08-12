@@ -22,6 +22,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/swagger": "^8.1.0",
     "@pulse/domain": "workspace:*",
+    "@pulse/module-contracts": "workspace:*",
     "argon2": "^0.41.1",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.2",

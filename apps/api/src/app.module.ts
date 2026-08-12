@@ -15,6 +15,7 @@ import { CustomersModule } from "./customers/customers.module";
 import { AssistiveDevicesModule } from "./assistive-devices/assistive-devices.module";
 import { CasesModule } from "./cases/cases.module";
 import { AppointmentsModule } from "./appointments/appointments.module";
+import { ModuleRegistryModule } from "./module-registry/module-registry.module";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AppointmentsModule } from "./appointments/appointments.module";
     AssistiveDevicesModule,
     CasesModule,
     AppointmentsModule,
+    ModuleRegistryModule,
   ],
   providers: [{ provide: APP_PIPE, useClass: ZodValidationPipe }],
 })

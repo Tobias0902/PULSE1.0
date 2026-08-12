@@ -38,6 +38,9 @@ importers:
       '@pulse/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@pulse/module-contracts':
+        specifier: workspace:*
+        version: link:../../packages/module-contracts
       argon2:
         specifier: ^0.41.1
         version: 0.41.1
@@ -175,6 +178,21 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.25.76
+    devDependencies:
+      '@pulse/config':
+        specifier: workspace:*
+        version: link:../config
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(supports-color@10.2.2)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(supports-color@10.2.2)(terser@5.49.2)
+
+  packages/module-contracts:
     devDependencies:
       '@pulse/config':
         specifier: workspace:*

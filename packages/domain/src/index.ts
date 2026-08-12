@@ -10,3 +10,4 @@ export * from "./assistive-device.js";
 export * from "./case.js";
 export * from "./appointment.js";
 export * from "./auth.js";
+export * from "./module.js";

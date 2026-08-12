@@ -17,6 +17,8 @@ export const PERMISSION_KEYS = [
   "case:write",
   "appointment:read",
   "appointment:write",
+  "module:read",
+  "module:write",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
