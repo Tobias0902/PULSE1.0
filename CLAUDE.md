@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Architecture Decisions #1–#9 below are locked. The first implementation iteration (PULSE-Core foundation only — see "Commands" and README.md) is in place: the pnpm/Turborepo monorepo, the NestJS/Drizzle/PostgreSQL backend, the initial domain model (Organization/Location/User/Role/Permission plus the Customer -> AssistiveDevice -> Case -> Appointment hierarchy), REST + OpenAPI, an audit-event foundation, and a throwaway dev/admin UI (`apps/dev-console`, explicitly not the final Cockpit). This is still foundation-only: no Module SDK, connectors/integration layer, relay, OIDC/MFA, or real product UX yet — see "Open decisions" below for what remains genuinely undecided.
+Architecture Decisions #1–#10 below are locked. The first implementation iteration (PULSE-Core foundation only — see "Commands" and README.md) is in place: the pnpm/Turborepo monorepo, the NestJS/Drizzle/PostgreSQL backend, the initial domain model (Organization/Location/User/Role/Permission plus the Customer -> AssistiveDevice -> Case -> Appointment hierarchy), REST + OpenAPI, an audit-event foundation, and a throwaway dev/admin UI (`apps/dev-console`, explicitly not the final Cockpit). This is still foundation-only: no Module SDK, connectors/integration layer, relay, OIDC/MFA, or real product UX yet — see "Open decisions" below for what remains genuinely undecided.
 
 Do not invent a finished architecture or begin implementing further application features beyond what's already here until any relevant open decision below has been resolved with the user. When a domain or architecture question is unclear, say so explicitly (or ask) rather than silently deciding it.
 
@@ -319,6 +319,64 @@ Binding principles:
 
 This decision extends Decision #7's module-boundary philosophy (Core stays narrow; richer functionality lives in a module) to the specific case Decision #7 §2 left open, and extends Decision #8's single-source-of-truth-per-entity philosophy from external connectors to inter-module relationships within one installation. It does not reopen or modify Decisions #1–#8.
 
+### Decision #10 — Industry-neutral CORE with pluggable industry profiles (LOCKED, 2026-08-13)
+
+**Fundamental model:**
+
+- PULSE-Core is deliberately industry-neutral. PULSE+OT (orthopaedic technology / medical-supply) is the first of potentially several future industry profiles built on the same Core — sharing one codebase and one Module SDK, not a fork.
+- Composition: `PULSE CORE + industry profile + optional modules + company-specific configuration`.
+- Guiding principle: CORE knows identities, organisations and relationships; the industry profile gives them meaning.
+
+Binding principles:
+
+1. An industry profile (e.g. PULSE+OT) is a module/configuration bundle — a specific set of enabled modules plus configuration (terminology, workflows, forms, required fields, defaults) — not a new first-class CORE domain entity and not a new Module SDK extension category alongside modules (Decision #7) and connectors (Decision #8). No new SDK mechanism is introduced by this decision; industry profiles are composed entirely from Decision #7 §8's existing generic registries.
+2. CORE's neutral master-data primitives are: Person, Organisation, Location, Address/contact information, Relationship, RelationshipType, User identity (Decision #4), a thin Organisation-membership primitive, Document/Attachment references, and a generic extensible properties/tags/metadata mechanism. Richer, industry- or module-specific concepts remain outside Core, per Decision #7 §1/§4.
+3. Organisation is a single generic CORE concept covering both the tenant's own organisation(s) and any external organisation (clinic, insurer, supplier, business customer, etc.). There is no separate domain entity per external-party kind; meaning is expressed through Relationships/RelationshipTypes and module-owned data, never through Organisation subtypes. Tenant/installation ownership must be represented explicitly (e.g. an explicit flag or reference) and must never be inferred from an Organisation's type or from which relationships it holds.
+4. Relationship is CORE's generic typed edge between Person/Organisation entities, replacing one-off link tables (e.g. "doctor of case"). Its semantic classification is named `RelationshipType`, deliberately distinct from Decision #4's authorization `Role`, to avoid conflating relationship semantics with permission bundles. Industry modules supply the `RelationshipType` vocabulary (e.g. `customer`, `supplier`, `prescriber`, `payer`, `employee`, `contact_person`) and may provide localized/display terminology, registered through Decision #7 §8's generic registries.
+5. "Customer" is not a dedicated Core entity; it is a Relationship with `RelationshipType` `customer` between a tenant Organisation and a Person or external Organisation. "Partner" is likewise not a dedicated Core entity — any external party (referring doctor, clinic, insurer, supplier, logistics partner) is a Person or Organisation connected through a typed Relationship, never a separate catch-all Partner entity.
+6. Core holds only the thin fact that a Person/User belongs to a tenant Organisation (needed for Decision #4's authorization/tenant-scoping). Richer HR data — reviews, goals, vacation, shift planning — remains PULSEHuman's, per its existing scope.
+7. The currently-implemented `Customer` and `AssistiveDevice` entities (see "Project status") are not migrated or refactored by this decision. Their remodeling into the Person/Organisation/Relationship shape is explicitly frozen as future work, deferred until both the Module SDK and the target ownership boundaries for the relocated concepts exist — a deliberate deferral, not an oversight.
+8. None of MDR-specific processes, OT care/supply workflows, or 3D scan/CAD belong in Core. PULSE+OT owns OT-specific care/supply domain semantics and workflows; PULSE-QM owns quality/compliance capabilities that are genuinely cross-industry (the generic shape of a compliance/review/audit process, not OT-specific regulatory content); 3D scan/CAD is its own distinct specialist module, not automatically bundled into PULSE+OT, so it can be reused by future industry profiles. The exact contract/interface boundaries between PULSE+OT, PULSE-QM, and a Scan/CAD module are left to future detailed module design, not decided by this principle.
+9. Master data (Person, Organisation, Relationship/RelationshipType, Location, Address) is durable, low-churn, and reusable across every customer, case, and order. Order/supply-specific documentation (prescriptions, approvals, case-specific device configuration, scan/CAD output, MDR documentation) is high-churn, tied to one case/order, and references Core master data by ID rather than duplicating it — the same anti-duplication principle Decision #8 §7/§10 already applies to external-system data, generalized to inter-entity relationships within Core.
+10. This decision does not resolve, and leaves explicitly open: whether a generic Consent/Release record becomes a Core primitive (see "Recorded future capability"); whether a single installation supports multiple internal tenant organisations (predates this decision, unaffected by it); and the detailed contract boundaries deferred in principle 8. These remain tracked under "Open decisions" below.
+
+**Reference — CORE primitive classification:**
+
+| Candidate | Verdict | Notes |
+|---|---|---|
+| Person | Core | Neutral identity primitive. Distinct from `User`: a Person is not necessarily a system user. `User` (Decision #4) is a Person plus authentication/session capability, not a separate identity root. |
+| Organisation | Core | Single generic concept for tenant and external organisations alike (principle 3). |
+| Location | Core | Already implemented, already neutral. |
+| Address/contact information | Core | Reusable value type across Person, Organisation, Location. |
+| Relationship | Core | Generic typed edge between Person/Organisation entities (principle 4). |
+| RelationshipType | Core | Semantic classification of a Relationship; distinct from Decision #4's authorization Role (principle 4). |
+| User identity | Core, unchanged | Governed by Decision #4; relationship to Person clarified above. |
+| Employment/organisation membership | Thin Core primitive | Tenant-scoping fact only; richer HR data is PULSEHuman's (principle 6). |
+| Customer/business relationship | Not a Core entity | A Relationship with `RelationshipType` `customer` (principle 5). |
+| Permissions/consent primitive | Still open | Same "generic Consent/Release record" candidate flagged under "Recorded future capability" below; unresolved by this decision. |
+| Document/file references | Core, unchanged | Already anticipated in Decision #7 §4's example list (Document, Attachment). |
+| Extensible properties/tags/metadata | Core, as a mechanism | Generic custom-field/tagging capability, registered per Decision #7 §8; holds no domain semantics itself. |
+
+**Reference — classification of OT-EDV master-data concepts reviewed so far:**
+
+| Concept | Classification |
+|---|---|
+| Case | PULSE CORE (already a neutral primitive per Decision #7 §4) |
+| Appointment (legacy table) | Frozen per Decision #9, unaffected by this decision |
+| `Customer` (current entity) | PULSE CORE target shape: Person/Organisation + `Relationship(relationshipType=customer)` — migration frozen for now (principle 7) |
+| `AssistiveDevice` (current entity) | PULSE+OT industry profile or specialist module — migration frozen for now (principle 7) |
+| Doctor / referrer / prescriber / treating professional / ordering party | Not Core entities — PULSE+OT-supplied RelationshipTypes over Core Person/Organisation |
+| Clinic | Core Organisation + PULSE+OT-supplied RelationshipTypes, not a dedicated "Clinic" entity |
+| Health insurer / payer | Core Organisation + PULSE+OT-supplied RelationshipType `payer`; may not exist at all in a non-OT industry profile |
+| Prescriptions, approvals, OT documentation | PULSE+OT domain — order/supply-specific documentation (principle 9) |
+| MDR-specific processes | Split: PULSE+OT (OT-specific content) vs. PULSE-QM (cross-industry compliance mechanics) — high-level split locked (principle 8); detailed boundary is future module-design work |
+| Scans/CAD | Distinct specialist module, not CORE and not automatically PULSE+OT (principle 8); detailed design deferred |
+| Employee content-competencies/platform identifiers | Unchanged — module-owned (future Content Coordination module), per existing open decision |
+| Consent/Release record | Unchanged — still an open Core-primitive candidate, sign-off still required |
+| Partner | No entity; Person/Organisation + Relationship (RelationshipType) instead (principle 5) |
+
+This decision generalizes Decision #7's narrow-Core philosophy from "avoid OT-specific concepts in Core" to a concrete minimal primitive set (Person, Organisation, Relationship/RelationshipType, Location, Address) and an explicit customer/partner modeling pattern, resolves the "Partner entity" question left open since the OT-EDV master-data review began, and records a deliberate, explicit deferral of the `Customer`/`AssistiveDevice` migration rather than leaving it ambiguous. It does not reopen or modify Decisions #1–#9.
+
 ## Recorded future capability: external content-request coordination (NOT LOCKED, NOT IMPLEMENTED, recorded 2026-08-13)
 
 This section exists purely so this future capability is not forgotten and so CORE, Calendar, PULSEHuman, QM and the integration layer keep clean boundaries for it. **It is not a locked architecture decision, is not scheduled, and must not be implemented** — no marketing/content-generation system, no external-AI integration, no SEO/GEO logic, no social-network connectors, no automated consent decisions, and **no database migrations or production code** — until the open questions below are explicitly resolved with the user and this section is promoted to a numbered, locked Decision.
@@ -354,13 +412,13 @@ The request asks for this preparation to live in CORE master data. That is in di
 
 - **Employee content competencies/platform identifiers** (platform/profile identifiers or profile names, content/topic competencies) are content/marketing-specific attributes, not a cross-cutting primitive every installation needs — by Decision #7 they look like module-owned data (e.g. owned by the future Content Coordination module's own schema, referencing Core's `User` by ID per Decision #7 §7/§9), not fields on Core's `User`/Organization tables.
 - **Consent/release records** (status, scope/purpose, date, version/document reference, expiry/review date, proof/signature reference), by contrast, look genuinely cross-cutting — GDPR consent, photo/video consent, QM sign-offs, and future content/marketing consent are all instances of the same shape, reusable by QM, a future content module, PULSEHuman, and CRM alike. A generic, purpose-neutral "Consent/Release record" Core primitive (associated with any Core entity, with the specific purpose/scope as data, not as distinct schema per purpose) would fit Core's existing pattern of neutral primitives (Comment, Attachment, Notification) better than a content-specific field set — but this is a new Core primitive that isn't in today's domain model and needs your explicit sign-off before it's designed further.
-- **Partner master data** does not exist in Core's current domain model at all (today's model is Organization/Location/User/Role/Permission plus Customer → AssistiveDevice → Case → Appointment). Introducing "Partner" is a net-new Core primitive, not an extension of an existing one, and needs its own scoping.
+- **Partner master data** — resolved by Decision #10 §5: no dedicated "Partner" entity is introduced. Any external party (including a future content-request partner) is a Person or Organisation connected through a typed Relationship/RelationshipType.
 
 None of the above is decided by this documentation update. No fields, tables, or migrations are added now.
 
 ## Open decisions (must be resolved before implementation starts)
 
-Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architecture), #4 (authentication and authorization), #5 (secure remote and mobile access), #6 (synchronization and offline strategy), #7 (module boundaries and extension architecture), #8 (integration layer) and #9 (Calendar as the platform-wide appointment/event authority) are locked above. The following remain explicitly undecided — flag them rather than assuming an answer:
+Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architecture), #4 (authentication and authorization), #5 (secure remote and mobile access), #6 (synchronization and offline strategy), #7 (module boundaries and extension architecture), #8 (integration layer), #9 (Calendar as the platform-wide appointment/event authority) and #10 (industry-neutral CORE with pluggable industry profiles) are locked above. The following remain explicitly undecided — flag them rather than assuming an answer:
 
 - Concrete API versioning policy: supported-version and deprecation windows, and URI versioning vs. header versioning (see Decision #3)
 - Structural separation and governance of internal vs. external/public APIs (see Decision #3, principle 9)
@@ -389,9 +447,10 @@ Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architectu
 - Apple Calendar's technical feasibility for server-side sync specifically, pending a dedicated technical spike (see Decision #8, principle 23)
 - Whether Employee content-competency/platform-identifier data (for the future external content-request coordination capability) lives in a future module's own schema or on a Core primitive — current default reading of Decision #7 says module-owned; needs explicit confirmation (see "Recorded future capability: external content-request coordination")
 - Whether a generic, purpose-neutral Consent/Release record becomes a new Core primitive (reusable by QM, PULSEHuman, CRM and a future content module) versus living solely inside PULSE-QM — a new Core primitive is not yet part of today's domain model and needs sign-off before design (see "Recorded future capability: external content-request coordination")
-- Whether/how a "Partner" entity is introduced into the domain model at all (it does not exist in Core today), and if introduced, whether it is a Core primitive (like Customer) or module-owned (see "Recorded future capability: external content-request coordination")
 - Module boundary for the future content-coordination capability: a new dedicated module (given PULSEHuman's explicit "holds no customer data" restriction rules out simply extending PULSEHuman), its relationship to PULSE-QM's consent gate, and the exact contract/event surface it uses against Calendar, CRM and ERP (see "Recorded future capability: external content-request coordination")
 - Design and activation mechanism for the future external content-request integration itself (connector shape, authentication, and how it is enabled/configured per installation per Decision #8) — deferred until the module-boundary questions above are resolved
+- Detailed contract/interface boundaries between PULSE+OT, PULSE-QM, and a future Scan/CAD module (the high-level ownership split is locked — see Decision #10, principle 8 — but the exact interfaces are future module-design work)
+- Scope and timing of migrating the currently-implemented `Customer` and `AssistiveDevice` entities into the Decision #10 domain shape, once the Module SDK and target ownership boundaries exist (see Decision #10, principle 7 — deliberately not scheduled yet)
 
 ## Commands
 
