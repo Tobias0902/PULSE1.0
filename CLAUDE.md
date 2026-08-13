@@ -8,6 +8,8 @@ Architecture Decisions #1–#9 below are locked. The first implementation iterat
 
 Do not invent a finished architecture or begin implementing further application features beyond what's already here until any relevant open decision below has been resolved with the user. When a domain or architecture question is unclear, say so explicitly (or ask) rather than silently deciding it.
 
+A future capability (external AI/marketing content-request coordination) is recorded but explicitly not locked and not implemented — see "Recorded future capability: external content-request coordination" below. Do not add fields, tables, migrations, or code for it until that section's open questions are resolved.
+
 ## What PULSE is
 
 PULSE is a professional, modular software platform for orthopaedic technology and medical supply companies, intended as a long-lived commercial product — not a prototype, demo, or task tracker.
@@ -41,6 +43,7 @@ The product is structured as a stable **PULSE-Core** plus optional modules.
 - Communication integrations (email, messaging)
 - Integrations with existing ERP/industry software
 - Document and data import/export
+- PULSE Content Coordination (future, not yet designed) — coordinates PULSE's internal operational response to structured content/marketing requests from an external AI/marketing system (topic → suitable employee/appointment → QM consent gate → daily-overview task → material return). PULSE does not generate, publish, or manage marketing content itself. See "Recorded future capability: external content-request coordination" below.
 - Additional specialist modules
 
 ### First deployment vs. product scope
@@ -316,6 +319,45 @@ Binding principles:
 
 This decision extends Decision #7's module-boundary philosophy (Core stays narrow; richer functionality lives in a module) to the specific case Decision #7 §2 left open, and extends Decision #8's single-source-of-truth-per-entity philosophy from external connectors to inter-module relationships within one installation. It does not reopen or modify Decisions #1–#8.
 
+## Recorded future capability: external content-request coordination (NOT LOCKED, NOT IMPLEMENTED, recorded 2026-08-13)
+
+This section exists purely so this future capability is not forgotten and so CORE, Calendar, PULSEHuman, QM and the integration layer keep clean boundaries for it. **It is not a locked architecture decision, is not scheduled, and must not be implemented** — no marketing/content-generation system, no external-AI integration, no SEO/GEO logic, no social-network connectors, no automated consent decisions, and **no database migrations or production code** — until the open questions below are explicitly resolved with the user and this section is promoted to a numbered, locked Decision.
+
+### Product boundary (binding whenever this is eventually built)
+
+PULSE coordinates the internal operational response to an external content request. **PULSE itself does not create, generate, edit, publish, or distribute marketing content, and does not become the marketing/content-generation system.** All content creation/generation/publishing/SEO-GEO/social-network capability is explicitly out of PULSE's scope and lives entirely in the external AI/marketing system.
+
+### Future workflow (for reference only — not being built now)
+
+1. An external system sends a concrete content request/topic to PULSE.
+2. PULSE evaluates internal master data to determine which employee is suitable for the requested topic.
+3. PULSE evaluates Calendar/CRM/ERP context to identify a suitable appointment or work event.
+4. The responsible employee receives the content request in their daily overview.
+5. Before material may be collected or returned, PULSE checks all required permissions/releases defined by QM for every involved employee, customer and partner.
+6. Missing, expired or insufficient permissions produce a clear blocking warning and, where configured, a request for renewed approval/signature.
+7. Customer privacy restrictions are always respected, including separate permissions/restrictions for visibility, naming, tagging/mentioning, images, video, audio and other relevant media/use purposes.
+8. Human approval is mandatory for any deviation from QM rules. AI must never autonomously override a missing or insufficient consent. Prior human decisions may be used as decision support for similar future cases, but the system must still inform the responsible human and require the applicable approval.
+9. On completion, PULSE returns the collected/approved material and structured metadata to the external requesting system through a future interface.
+
+### How this is expected to map onto the locked architecture
+
+- **External system boundary → Decision #8 (integration layer).** The external AI/marketing system is a connector-style integration, not a module PULSE hosts. PULSE is authoritative for the internal operational routing/response (task assignment, consent gating, material handoff); the external system is authoritative for content creation/generation/publishing itself. This is a normal per-domain authority split under Decision #8 §3–§5, not a new pattern.
+- **Not Core business logic → Decision #7.** Matching a topic to a suitable employee, evaluating Calendar/CRM/ERP context, and orchestrating the QM consent gate is feature-specific orchestration logic. Per Decision #7 §1/§4, this belongs in a future first-party module (tentatively "PULSE Content Coordination" above), not in PULSE-Core itself.
+- **Calendar/CRM/ERP context → Decision #9.** The future module must read appointment/event context through Calendar's own contracts/domain events, never by querying Calendar's (or CRM's/ERP's) tables directly (Decision #7 §9, Decision #9 §4).
+- **QM consent gate → PULSE-QM.** "Permissions/releases defined by QM" implies the consent/release rules and the periodic review/renewal logic (workflow step 8 above; also listed under CORE/master-data preparation below) are QM's domain, not something the content-coordination module or Core reimplements independently.
+- **Daily overview delivery → Core's notification primitive / PULSEHuman's own UI.** No new ad hoc delivery channel should be introduced; this reuses the existing notification mechanism (Decision #7 §1).
+- **PULSEHuman's "no customer data" boundary.** PULSEHuman is explicitly scoped as holding no customer data. Because this capability needs both employee data and customer/partner consent data together, it cannot simply be added to PULSEHuman — it needs its own module boundary (or to be split across PULSEHuman-owned employee-competency data and a separate module/QM-owned consent+routing concern). This is one of the open questions below, not decided here.
+
+### CORE/master-data preparation — architecture conflict flagged, needs your decision
+
+The request asks for this preparation to live in CORE master data. That is in direct tension with Decision #7 §1/§4, which requires Core to stay a narrow, industry/feature-neutral foundation and explicitly forbids Core from accumulating feature-specific functionality that belongs in a module. Concretely:
+
+- **Employee content competencies/platform identifiers** (platform/profile identifiers or profile names, content/topic competencies) are content/marketing-specific attributes, not a cross-cutting primitive every installation needs — by Decision #7 they look like module-owned data (e.g. owned by the future Content Coordination module's own schema, referencing Core's `User` by ID per Decision #7 §7/§9), not fields on Core's `User`/Organization tables.
+- **Consent/release records** (status, scope/purpose, date, version/document reference, expiry/review date, proof/signature reference), by contrast, look genuinely cross-cutting — GDPR consent, photo/video consent, QM sign-offs, and future content/marketing consent are all instances of the same shape, reusable by QM, a future content module, PULSEHuman, and CRM alike. A generic, purpose-neutral "Consent/Release record" Core primitive (associated with any Core entity, with the specific purpose/scope as data, not as distinct schema per purpose) would fit Core's existing pattern of neutral primitives (Comment, Attachment, Notification) better than a content-specific field set — but this is a new Core primitive that isn't in today's domain model and needs your explicit sign-off before it's designed further.
+- **Partner master data** does not exist in Core's current domain model at all (today's model is Organization/Location/User/Role/Permission plus Customer → AssistiveDevice → Case → Appointment). Introducing "Partner" is a net-new Core primitive, not an extension of an existing one, and needs its own scoping.
+
+None of the above is decided by this documentation update. No fields, tables, or migrations are added now.
+
 ## Open decisions (must be resolved before implementation starts)
 
 Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architecture), #4 (authentication and authorization), #5 (secure remote and mobile access), #6 (synchronization and offline strategy), #7 (module boundaries and extension architecture), #8 (integration layer) and #9 (Calendar as the platform-wide appointment/event authority) are locked above. The following remain explicitly undecided — flag them rather than assuming an answer:
@@ -345,6 +387,11 @@ Decisions #1 (technology stack), #2 (database/tenancy model), #3 (API architectu
 - Which connectors ship first-party at launch (product/roadmap decision, not architecture)
 - UI/UX for per-entity/group source-of-truth configuration and conflict resolution (see Decision #8, principles 3 and 9)
 - Apple Calendar's technical feasibility for server-side sync specifically, pending a dedicated technical spike (see Decision #8, principle 23)
+- Whether Employee content-competency/platform-identifier data (for the future external content-request coordination capability) lives in a future module's own schema or on a Core primitive — current default reading of Decision #7 says module-owned; needs explicit confirmation (see "Recorded future capability: external content-request coordination")
+- Whether a generic, purpose-neutral Consent/Release record becomes a new Core primitive (reusable by QM, PULSEHuman, CRM and a future content module) versus living solely inside PULSE-QM — a new Core primitive is not yet part of today's domain model and needs sign-off before design (see "Recorded future capability: external content-request coordination")
+- Whether/how a "Partner" entity is introduced into the domain model at all (it does not exist in Core today), and if introduced, whether it is a Core primitive (like Customer) or module-owned (see "Recorded future capability: external content-request coordination")
+- Module boundary for the future content-coordination capability: a new dedicated module (given PULSEHuman's explicit "holds no customer data" restriction rules out simply extending PULSEHuman), its relationship to PULSE-QM's consent gate, and the exact contract/event surface it uses against Calendar, CRM and ERP (see "Recorded future capability: external content-request coordination")
+- Design and activation mechanism for the future external content-request integration itself (connector shape, authentication, and how it is enabled/configured per installation per Decision #8) — deferred until the module-boundary questions above are resolved
 
 ## Commands
 
