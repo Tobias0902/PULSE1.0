@@ -14,4 +14,10 @@ export const CALENDAR_MODULE_DESCRIPTOR: ModuleDescriptor = {
   permissionKeys: ["calendar:read:own", "calendar:write:own"],
   postgresSchema: "calendar",
   migrationsFolder: "./src/modules/calendar/database/drizzle",
+  routePrefixes: ["modules/calendar/events"],
+  // The two Core operations Calendar actually calls (see
+  // CalendarEventsService.assertLocationReferenceValid) — validated
+  // against Core's providesCapabilities at registration time
+  // (MODULE_SDK_DESIGN.md §5).
+  requiresCapabilities: ["customers:findOne", "locations:findOne"],
 };

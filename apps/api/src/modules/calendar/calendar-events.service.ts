@@ -5,8 +5,8 @@ import { DATABASE_CONNECTION, Database } from "../../database/database.provider"
 import { calendarEvents } from "./database/calendar.schema";
 import { AuditService } from "../../common/audit/audit.service";
 import { EventBusService } from "../../events/event-bus.service";
-import { CustomersService } from "../../customers/customers.service";
-import { LocationsService } from "../../locations/locations.service";
+import { CUSTOMERS_FIND_ONE, CustomersFindOneCapability } from "../../customers/customers.capability";
+import { LOCATIONS_FIND_ONE, LocationsFindOneCapability } from "../../locations/locations.capability";
 import { assertVersionedUpdateApplied } from "../../common/optimistic-lock";
 import { single } from "../../common/single";
 import { toAuditOrEventPayload } from "./calendar-event-privacy";
@@ -20,11 +20,14 @@ export class CalendarEventsService {
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly auditService: AuditService,
     private readonly eventBus: EventBusService,
-    // Core's own services, injected for in-process reference validation
-    // (CLAUDE.md Decision #7 §7) — never direct queries against Core's
-    // customers/locations tables (Decision #7 §9).
-    private readonly customersService: CustomersService,
-    private readonly locationsService: LocationsService,
+    // Narrow capability tokens (MODULE_SDK_DESIGN.md §5/§6), not the full
+    // CustomersService/LocationsService classes — Calendar only ever needs
+    // "does this reference resolve for my organization", so that's the
+    // entire surface it depends on now, in-process (CLAUDE.md Decision #7
+    // §7), never direct queries against Core's customers/locations tables
+    // (Decision #7 §9).
+    @Inject(CUSTOMERS_FIND_ONE) private readonly customersFindOne: CustomersFindOneCapability,
+    @Inject(LOCATIONS_FIND_ONE) private readonly locationsFindOne: LocationsFindOneCapability,
   ) {}
 
   // This iteration only supports a user's own calendar — cross-user
@@ -146,9 +149,9 @@ export class CalendarEventsService {
   // reference doesn't resolve within the caller's own organization.
   private async assertLocationReferenceValid(location: CalendarEventLocation, organizationId: string): Promise<void> {
     if (location.type === "customerAddress") {
-      await this.customersService.findOne(location.customerId, organizationId);
+      await this.customersFindOne.findOne(location.customerId, organizationId);
     } else if (location.type === "coreLocation") {
-      await this.locationsService.findOne(location.locationId, organizationId);
+      await this.locationsFindOne.findOne(location.locationId, organizationId);
     }
   }
 }

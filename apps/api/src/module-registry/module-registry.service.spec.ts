@@ -51,4 +51,65 @@ describe("validateDescriptors", () => {
       ]),
     ).toThrow(/Duplicate module id/);
   });
+
+  it("accepts descriptors that omit providesCapabilities/requiresCapabilities entirely", () => {
+    expect(() => validateDescriptors([descriptor({})])).not.toThrow();
+  });
+
+  it("accepts a module requiring a capability another module provides", () => {
+    expect(() =>
+      validateDescriptors([
+        descriptor({ providesCapabilities: ["customers:findOne"] }),
+        descriptor({ id: "calendar", isCore: false, requiresCapabilities: ["customers:findOne"] }),
+      ]),
+    ).not.toThrow();
+  });
+
+  it("rejects a module requiring a capability no module provides", () => {
+    expect(() =>
+      validateDescriptors([
+        descriptor({ id: "calendar", isCore: false, requiresCapabilities: ["customers:findOne"] }),
+      ]),
+    ).toThrow(/requires capability "customers:findOne", which no registered module provides/);
+  });
+
+  it("rejects a non-core module declaring an unprefixed capability key", () => {
+    expect(() =>
+      validateDescriptors([
+        descriptor({ id: "crm", isCore: false, providesCapabilities: ["contact:findOne"] }),
+      ]),
+    ).toThrow(/must be prefixed/);
+  });
+
+  it("accepts descriptors that omit routePrefixes entirely", () => {
+    expect(() => validateDescriptors([descriptor({})])).not.toThrow();
+  });
+
+  it("accepts a non-core module declaring a route prefix under its own modules/<id> namespace", () => {
+    expect(() =>
+      validateDescriptors([
+        descriptor({ id: "calendar", isCore: false, routePrefixes: ["modules/calendar/events"] }),
+      ]),
+    ).not.toThrow();
+  });
+
+  it("rejects a non-core module declaring a route prefix outside its own namespace", () => {
+    expect(() =>
+      validateDescriptors([descriptor({ id: "calendar", isCore: false, routePrefixes: ["customers"] })]),
+    ).toThrow(/must live under "modules\/calendar"/);
+  });
+
+  it("rejects two descriptors declaring the same route prefix", () => {
+    // Core declares it first (Core is exempt from the modules/<id> namespace
+    // check), so this isolates the duplicate-prefix check from the
+    // namespace check — two non-core ids could never legitimately collide
+    // on the same literal prefix in the first place, since each one's
+    // prefix is constrained to its own "modules/<id>" namespace.
+    expect(() =>
+      validateDescriptors([
+        descriptor({ routePrefixes: ["modules/calendar/events"] }),
+        descriptor({ id: "calendar", isCore: false, routePrefixes: ["modules/calendar/events"] }),
+      ]),
+    ).toThrow(/declared by more than one module/);
+  });
 });

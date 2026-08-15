@@ -35,4 +35,36 @@ export interface ModuleDescriptor {
    * (CLAUDE.md Decision #2: one database per installation).
    */
   migrationsFolder: string | null;
+  /**
+   * Capability keys this module exposes for other modules to consume,
+   * e.g. "customers:findOne". Optional and additive — a descriptor that
+   * omits this field simply exposes nothing new beyond whatever cross-
+   * module NestJS imports already exist today. Non-Core modules must
+   * prefix every key with their own module id, same rule as
+   * `permissionKeys` (enforced in validateDescriptors()).
+   */
+  providesCapabilities?: string[];
+  /**
+   * Capability keys this module declares it consumes from other modules
+   * (CLAUDE.md Decision #7 §7's "explicitly exported interfaces").
+   * Optional and additive: a descriptor that omits this field is not
+   * validated against it at all — existing modules keep working
+   * unchanged until they opt in. Once declared, every entry must be
+   * provided by some other descriptor's `providesCapabilities`
+   * (validateDescriptors() checks this at registration time).
+   */
+  requiresCapabilities?: string[];
+  /**
+   * NestJS `@Controller()` path prefixes this module owns, e.g.
+   * "modules/calendar/events" for Calendar's existing controller.
+   * Optional and additive — purely declared, checkable metadata
+   * (CLAUDE.md Decision #7 §8's "API routes" registry); it does not
+   * change how NestJS actually wires routes (still compile-time
+   * controller imports into AppModule, unchanged by this field). Every
+   * non-core module's declared prefixes must live under "modules/<id>",
+   * matching the convention Calendar already uses, and no two
+   * descriptors may declare the exact same prefix
+   * (validateDescriptors() checks both at registration time).
+   */
+  routePrefixes?: string[];
 }

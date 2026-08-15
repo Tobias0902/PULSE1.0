@@ -19,6 +19,10 @@ export const MODULE_DESCRIPTORS: ModuleDescriptor[] = [
     permissionKeys: [...PERMISSION_KEYS],
     postgresSchema: "core",
     migrationsFolder: "./drizzle",
+    // What Core actually exposes for other modules to consume in-process
+    // (MODULE_SDK_DESIGN.md §5) — currently just the two capabilities
+    // Calendar depends on (CUSTOMERS_FIND_ONE/LOCATIONS_FIND_ONE tokens).
+    providesCapabilities: ["customers:findOne", "locations:findOne"],
   },
   CALENDAR_MODULE_DESCRIPTOR,
 ];

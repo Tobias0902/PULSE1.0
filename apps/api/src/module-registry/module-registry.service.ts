@@ -96,5 +96,53 @@ export function validateDescriptors(descriptors: ModuleDescriptor[]): void {
         );
       }
     }
+
+    // Same collision-prevention rule as permissionKeys, applied to
+    // providesCapabilities — a non-core module's capability keys must live
+    // in its own namespace.
+    for (const key of descriptor.providesCapabilities ?? []) {
+      if (!descriptor.isCore && !key.startsWith(`${descriptor.id}:`)) {
+        throw new Error(
+          `Module "${descriptor.id}" declares capability "${key}", which must be prefixed ` +
+            `with "${descriptor.id}:" to avoid colliding with another module's namespace.`,
+        );
+      }
+    }
+  }
+
+  // requiresCapabilities is checked in a second pass, after every
+  // descriptor's providesCapabilities has been seen once, so declaration
+  // order in MODULE_DESCRIPTORS never matters.
+  const providedCapabilities = new Set(descriptors.flatMap((descriptor) => descriptor.providesCapabilities ?? []));
+  for (const descriptor of descriptors) {
+    for (const key of descriptor.requiresCapabilities ?? []) {
+      if (!providedCapabilities.has(key)) {
+        throw new Error(
+          `Module "${descriptor.id}" requires capability "${key}", which no registered module provides.`,
+        );
+      }
+    }
+  }
+
+  // routePrefixes is purely declared metadata today (CLAUDE.md Decision
+  // #7 §8) — it does not drive actual NestJS route wiring, only these two
+  // checks: a non-core module's declared prefixes must live in its own
+  // "modules/<id>" namespace (same collision-prevention pattern as
+  // permissionKeys/providesCapabilities), and no two descriptors may
+  // declare the exact same prefix.
+  const seenRoutePrefixes = new Set<string>();
+  for (const descriptor of descriptors) {
+    for (const prefix of descriptor.routePrefixes ?? []) {
+      if (!descriptor.isCore && !(prefix === `modules/${descriptor.id}` || prefix.startsWith(`modules/${descriptor.id}/`))) {
+        throw new Error(
+          `Module "${descriptor.id}" declares route prefix "${prefix}", which must live under ` +
+            `"modules/${descriptor.id}" to avoid colliding with another module's namespace.`,
+        );
+      }
+      if (seenRoutePrefixes.has(prefix)) {
+        throw new Error(`Route prefix "${prefix}" is declared by more than one module.`);
+      }
+      seenRoutePrefixes.add(prefix);
+    }
   }
 }

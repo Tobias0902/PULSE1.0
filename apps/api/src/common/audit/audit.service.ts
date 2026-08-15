@@ -7,7 +7,7 @@ export interface RecordMutationInput {
   userId: string | null;
   entityType: string;
   entityId: string;
-  action: "create" | "update";
+  action: "create" | "update" | "delete";
   payload?: unknown;
 }
 
